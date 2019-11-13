@@ -2,6 +2,8 @@
 
 import sys
 
+sp = 7
+
 class CPU:
     """Main CPU class."""
 
@@ -13,6 +15,8 @@ class CPU:
         self.reg = [0] * 8
         #program counter
         self.pc = 0
+        #Stack pointer - points to f4, reserved on R7
+        self.reg[sp] = 0xf4
         #halt flag
         self.halted = False
         #binary values of commands
@@ -23,6 +27,10 @@ class CPU:
         self.PRN = 0b01000111
         #* Multiply the values in two registers together and store the reult in registerA - 3 byte
         self.MULT = 0b10100010
+        #*Push to a stack, 2 byte
+        self.PUSH = 0b01000101
+        #* pop last value of stack, 2 byte
+        self.POP = 0b01000110
         #OPS
         self.op1 = None
         self.op2 = None
@@ -32,6 +40,8 @@ class CPU:
         self.branchtable[self.PRN] = self.handle_prn
         self.branchtable[self.LDI] = self.handle_ldi
         self.branchtable[self.MULT] = self.handle_mult
+        self.branchtable[self.PUSH] = self.handle_push
+        self.branchtable[self.POP] = self.handle_pop
 
     def handle_hlt(self):
         self.halted = True
@@ -50,6 +60,27 @@ class CPU:
         self.alu("MULT", self.op1, self.op2)
 
         self.pc += 3
+
+    def handle_push(self):
+        #decrement sp
+        # print(self.reg[sp], 'before push')
+        self.reg[sp] -= 1
+        # print(self.reg[sp], 'after push')
+        #store in memory where reg[sp] points to the value of reg at op1
+        self.memory[self.reg[sp]] = self.reg[self.op1]
+    
+
+        self.pc += 2
+    
+    def handle_pop(self):
+        #copy value pointed to by sp to given reg (op1)
+        # print(self.reg[sp], 'sp reg')
+        #given reg ---------- value at memory pointed to by reg[sp]
+        self.reg[self.op1] = self.memory[self.reg[sp]]
+      
+        self.reg[sp] += 1
+    
+        self.pc += 2
 
     def update_ops(self):
         self.op1 = self.memory[self.pc + 1]
@@ -184,7 +215,7 @@ class CPU:
 
 
 
-        
+
         # print(bin(insturction), 'inst')
         # while not self.halted:
             #need to set an instruction
