@@ -31,6 +31,12 @@ class CPU:
         self.PUSH = 0b01000101
         #* pop last value of stack, 2 byte
         self.POP = 0b01000110
+        #* CALL
+        self.CALL = 0b01010000
+        #* RETURN
+        self.RET = 0b00010001
+        #* ADD
+        self.ADD = 0b10100000
         #OPS
         self.op1 = None
         self.op2 = None
@@ -42,6 +48,9 @@ class CPU:
         self.branchtable[self.MULT] = self.handle_mult
         self.branchtable[self.PUSH] = self.handle_push
         self.branchtable[self.POP] = self.handle_pop
+        self.branchtable[self.CALL] = self.handle_call
+        self.branchtable[self.RET] = self.handle_ret
+        self.branchtable[self.ADD] = self.handle_add
 
     def handle_hlt(self):
         self.halted = True
@@ -59,6 +68,11 @@ class CPU:
     def handle_mult(self):
         self.alu("MULT", self.op1, self.op2)
 
+        self.pc += 3
+
+    def handle_add(self):
+        self.alu("ADD", self.op1, self.op2)
+        print(f"adding {self.op1} and {self.op2}")
         self.pc += 3
 
     def handle_push(self):
@@ -81,6 +95,25 @@ class CPU:
         self.reg[sp] += 1
     
         self.pc += 2
+
+    def handle_call(self):
+        #push retrun address on stack
+        #! Have to use self.pc here instead of ops, because of the pc change in call.
+        return_address = self.pc + 2
+        self.reg[sp] -= 1
+        self.memory[self.reg[sp]] = return_address
+        reg_num = self.memory[self.pc + 1]
+        self.pc = self.reg[reg_num]
+        # print(self.pc, 'pc after call')
+
+    def handle_ret(self):
+        #pop the return address off stack
+        #store it in the pc
+        self.pc = self.memory[self.reg[sp]]
+        self.reg[sp] += 1
+       
+        # print(bin(self.pc), 'pc after ret')
+        
 
     def update_ops(self):
         self.op1 = self.memory[self.pc + 1]
@@ -188,8 +221,16 @@ class CPU:
         while not self.halted:
             # print("PC", self.pc)
             #Need this to update our operands to current based on the PC
-            self.update_ops()
-            # print(self.op1, self.op2)
+            self.op1 = self.memory[self.pc+1]
+            self.op2 = self.memory[self.pc+2]
+            
+            # print('PRE UPDATEOPS')
+            # print(bin(self.op1), bin(self.op2))
+            # self.update_ops()
+            # print('POST UPDATEOPS')
+
+            # print(bin(self.op1), bin(self.op2))
+
             #store insturction
             instruction = self.memory[self.pc]
             #find that in the branchtable
