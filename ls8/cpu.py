@@ -19,6 +19,9 @@ class CPU:
         self.reg[sp] = 0xf4
         #halt flag
         self.halted = False
+        #FLAGS '00000LGE'
+        self.FL = 0b00000000
+
         #binary values of commands
         self.HLT = 0b00000001
         #* Sets a specified register to a specified value, 3 byte instruction
@@ -37,9 +40,18 @@ class CPU:
         self.RET = 0b00010001
         #* ADD
         self.ADD = 0b10100000
+        #* COMPARE
+        self.CMP = 0b10100111
+        #* JUMP
+        self.JMP = 0b01010100
+        #* JEQ
+        self.JEQ = 0b01010101
+        #* JNE
+        self.JNE = 0b01010110
         #OPS
         self.op1 = None
         self.op2 = None
+
         #branch table
         self.branchtable = {}
         self.branchtable[self.HLT] = self.handle_hlt
@@ -51,6 +63,11 @@ class CPU:
         self.branchtable[self.CALL] = self.handle_call
         self.branchtable[self.RET] = self.handle_ret
         self.branchtable[self.ADD] = self.handle_add
+        self.branchtable[self.CMP] = self.handle_cmp
+        self.branchtable[self.JMP] = self.handle_jmp
+        self.branchtable[self.JEQ] = self.handle_jeq
+        self.branchtable[self.JNE] = self.handle_jne
+
 
     def handle_hlt(self):
         self.halted = True
@@ -61,7 +78,7 @@ class CPU:
         self.pc += 2
 
     def handle_ldi(self):
-        print(f"Reg {self.op1} set: {self.op2}")
+        # print(f"Reg {self.op1} set: {self.op2}")
         self.reg[self.op1] = self.op2
         self.pc += 3
     
@@ -114,6 +131,32 @@ class CPU:
        
         # print(bin(self.pc), 'pc after ret')
         
+    def handle_cmp(self):
+        self.alu('CMP', self.reg[self.op1], self.reg[self.op2])
+        # print(f"CMP, {self.reg[self.op1]} {self.reg[self.op2]}")
+
+        self.pc += 3
+    
+    def handle_jmp(self):
+        #Jump to the address stored in the given register
+        # given_reg = self.op1
+        self.pc = self.reg[self.op1]
+
+    def handle_jne(self):
+        #If `E` flag is clear (false, 0), jump to the address stored in the given register
+        if self.FL != 0b00000001:
+            self.handle_jmp()
+        else:
+            # print(f"FL is set to {bin(self.FL)}")
+            self.pc += 2
+
+    def handle_jeq(self):
+        #If `equal` flag is set (true), jump to the address stored in the given register.
+        if self.FL == 0b00000001:
+            self.handle_jmp()
+        else:
+            # print('FL is not equal,', bin(self.FL))
+            self.pc += 2
 
     def update_ops(self):
         self.op1 = self.memory[self.pc + 1]
@@ -163,6 +206,18 @@ class CPU:
         elif op == "MULT":
             self.reg[reg_a] = self.reg[reg_a] * self.reg[reg_b]
             # print(self.reg[reg_a] * self.reg[reg_b])
+        elif op == "CMP":
+            if reg_a < reg_b:
+                self.FL = 0b00000100
+                # print(f"a {reg_a} less than b {reg_b}")
+            elif reg_a == reg_b:
+                self.FL = 0b00000001
+                # print('CMP, Equal')
+            elif reg_a > reg_b:
+                self.FL = 0b00000010
+                # print('CMP, a greater b')
+            else:
+                self.FL = 0b00000000
         else:
             raise Exception("Unsupported ALU operation")
 
